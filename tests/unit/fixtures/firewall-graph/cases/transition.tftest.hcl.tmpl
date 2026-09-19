@@ -17,6 +17,9 @@ mock_provider "azapi" {
         tier              = "Regional"
         type              = "Standard"
         virtual_wan_id    = "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/rg-firewall-graph/providers/Microsoft.Network/virtualWans/vwan"
+        # Zone-redundant to match this harness's zone-redundant firewall default (var.zones defaults to
+        # [1, 2, 3]); keeps the customer-IP zone-compatibility precondition satisfied for these fixtures.
+        zones             = ["1", "2", "3"]
       }
     }
   }
