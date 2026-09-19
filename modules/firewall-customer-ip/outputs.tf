@@ -20,10 +20,12 @@ output "legacy_resource" {
     firewall_policy_id  = var.firewall_policy_id == null ? "" : var.firewall_policy_id
     tags                = azapi_resource.this.tags
     zones               = toset([for zone in coalesce(var.zones, []) : tostring(zone)])
-    threat_intel_mode   = azapi_resource.this.output.properties.threatIntelMode
-    dns_proxy_enabled   = try(azapi_resource.this.output.properties.additionalProperties["Network.DNS.EnableProxy"] == "true", false)
-    dns_servers         = compact(split(",", try(azapi_resource.this.output.properties.additionalProperties["Network.DNS.Servers"], "")))
-    private_ip_ranges   = toset(compact(split(",", try(azapi_resource.this.output.properties.additionalProperties["Network.SNAT.PrivateRanges"], ""))))
+    # threatIntelMode is intentionally never set on this AZFW_Hub-sku firewall (see main.tf), and real Azure
+    # correspondingly omits the property from the GET response entirely rather than returning it as null.
+    threat_intel_mode = try(azapi_resource.this.output.properties.threatIntelMode, null)
+    dns_proxy_enabled = try(azapi_resource.this.output.properties.additionalProperties["Network.DNS.EnableProxy"] == "true", false)
+    dns_servers       = compact(split(",", try(azapi_resource.this.output.properties.additionalProperties["Network.DNS.Servers"], "")))
+    private_ip_ranges = toset(compact(split(",", try(azapi_resource.this.output.properties.additionalProperties["Network.SNAT.PrivateRanges"], ""))))
     ip_configuration = tolist([
       for key in sort(keys(var.ip_configurations)) : {
         name                 = var.ip_configurations[key].name

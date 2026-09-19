@@ -30,19 +30,19 @@ variables {
   }
 }
 
-# Regression coverage for a real-Azure finding: a Secured Virtual Hub firewall's GET response commonly
-# leaves properties.hubIPAddresses.privateIPAddress absent entirely even after a successful create, while
-# the private address is always present per-ipConfiguration. This is the first (and only) apply against
-# azapi_resource.this in this file, so the override_resource output below is guaranteed to be authoritative
-# and not shadowed by state accumulated from an earlier run.
-run "resolve_private_ip_when_hub_ip_addresses_is_absent" {
+# Regression coverage for real-Azure findings on a Secured Virtual Hub firewall's GET response: it commonly
+# leaves properties.hubIPAddresses.privateIPAddress absent entirely even after a successful create (the
+# private address is always present per-ipConfiguration instead), and it omits properties.threatIntelMode
+# entirely too, since this module intentionally never sets it in the request body (see main.tf). This is the
+# first (and only) apply against azapi_resource.this in this file, so the override_resource output below is
+# guaranteed to be authoritative and not shadowed by state accumulated from an earlier run.
+run "resolve_outputs_when_azure_omits_optional_response_properties" {
   command = apply
   override_resource {
     target = azapi_resource.this
     values = {
       output = {
         properties = {
-          threatIntelMode      = "Alert"
           additionalProperties = {}
           ipConfigurations = [{
             name = "internet-primary"
@@ -58,5 +58,9 @@ run "resolve_private_ip_when_hub_ip_addresses_is_absent" {
   assert {
     condition     = output.private_ip_address == "10.224.8.132"
     error_message = "Real Azure GETs for a Secured Virtual Hub firewall commonly omit properties.hubIPAddresses entirely; the private IP must still resolve from properties.ipConfigurations."
+  }
+  assert {
+    condition     = output.legacy_resource.threat_intel_mode == null
+    error_message = "threatIntelMode is never set on this AZFW_Hub firewall, and real Azure omits it from the response entirely; the legacy compatibility output must degrade to null, not error."
   }
 }
