@@ -8,7 +8,8 @@ mock_provider "azapi" {
     defaults = {
       output = {
         address    = "203.0.113.10", allocation_method = "Static", association = null
-        ip_version = "IPv4", location = "eastus", sku = "Standard", tier = "Regional"
+        ip_version = "IPv4", location = "eastus", sku = "Standard", tier = "Regional", type = "Standard"
+        virtual_wan_id = "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/rg-test/providers/Microsoft.Network/virtualWans/wan-test"
       }
     }
   }
@@ -142,8 +143,8 @@ run "reject_public_ip_region_mismatch" {
 run "reject_basic_hub" {
   command = plan
   override_data {
-    target = data.azapi_resource.virtual_hub
-    values = { output = { sku = "Basic", location = "eastus" } }
+    target = data.azapi_resource.virtual_wan
+    values = { output = { type = "Basic" } }
   }
   expect_failures = [azapi_resource.this]
 }
@@ -152,7 +153,12 @@ run "reject_hub_region_mismatch" {
   command = plan
   override_data {
     target = data.azapi_resource.virtual_hub
-    values = { output = { sku = "Standard", location = "westus" } }
+    values = {
+      output = {
+        location       = "westus"
+        virtual_wan_id = "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/rg-test/providers/Microsoft.Network/virtualWans/wan-test"
+      }
+    }
   }
   expect_failures = [azapi_resource.this]
 }

@@ -40,6 +40,7 @@ The following resources are used by this module:
 - [azapi_client_config.telemetry](https://registry.terraform.io/providers/Azure/azapi/latest/docs/data-sources/client_config) (data source)
 - [azapi_resource.public_ips](https://registry.terraform.io/providers/Azure/azapi/latest/docs/data-sources/resource) (data source)
 - [azapi_resource.virtual_hub](https://registry.terraform.io/providers/Azure/azapi/latest/docs/data-sources/resource) (data source)
+- [azapi_resource.virtual_wan](https://registry.terraform.io/providers/Azure/azapi/latest/docs/data-sources/resource) (data source)
 - [azapi_resource_list.firewalls](https://registry.terraform.io/providers/Azure/azapi/latest/docs/data-sources/resource_list) (data source)
 - [modtm_module_source.telemetry](https://registry.terraform.io/providers/Azure/modtm/latest/docs/data-sources/module_source) (data source)
 
@@ -212,6 +213,7 @@ Description: AzAPI resource types and API versions.
 - `network_azure_firewalls` - Firewall resource and inventory reads.
 - `network_public_ip_addresses` - Read-only inspection of caller-owned public IPs.
 - `network_virtual_hubs` - Read-only inspection of the secured hub.
+- `network_virtual_wans` - Read-only inspection of the hub's parent Virtual WAN, the authoritative source for the Standard/Basic SKU.
 - `insights_diagnostic_settings` - Diagnostic settings; the preview API supports log category groups.
 - `authorization_locks` - Resource management lock.
 - `authorization_role_assignments` - Firewall-scoped role assignments.
@@ -225,6 +227,7 @@ object({
     network_azure_firewalls        = optional(string, "Microsoft.Network/azureFirewalls@2024-10-01")
     network_public_ip_addresses    = optional(string, "Microsoft.Network/publicIPAddresses@2024-10-01")
     network_virtual_hubs           = optional(string, "Microsoft.Network/virtualHubs@2024-10-01")
+    network_virtual_wans           = optional(string, "Microsoft.Network/virtualWans@2024-10-01")
     insights_diagnostic_settings   = optional(string, "Microsoft.Insights/diagnosticSettings@2021-05-01-preview")
   })
 ```

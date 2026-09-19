@@ -133,6 +133,7 @@ variable "resource_types" {
     network_azure_firewalls        = optional(string, "Microsoft.Network/azureFirewalls@2024-10-01")
     network_public_ip_addresses    = optional(string, "Microsoft.Network/publicIPAddresses@2024-10-01")
     network_virtual_hubs           = optional(string, "Microsoft.Network/virtualHubs@2024-10-01")
+    network_virtual_wans           = optional(string, "Microsoft.Network/virtualWans@2024-10-01")
     insights_diagnostic_settings   = optional(string, "Microsoft.Insights/diagnosticSettings@2021-05-01-preview")
   })
   default     = {}
@@ -142,6 +143,7 @@ AzAPI resource types and API versions.
 - `network_azure_firewalls` - Firewall resource and inventory reads.
 - `network_public_ip_addresses` - Read-only inspection of caller-owned public IPs.
 - `network_virtual_hubs` - Read-only inspection of the secured hub.
+- `network_virtual_wans` - Read-only inspection of the hub's parent Virtual WAN, the authoritative source for the Standard/Basic SKU.
 - `insights_diagnostic_settings` - Diagnostic settings; the preview API supports log category groups.
 - `authorization_locks` - Resource management lock.
 - `authorization_role_assignments` - Firewall-scoped role assignments.

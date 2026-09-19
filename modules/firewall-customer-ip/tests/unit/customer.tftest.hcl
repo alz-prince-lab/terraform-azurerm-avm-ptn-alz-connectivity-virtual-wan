@@ -8,7 +8,8 @@ mock_provider "azapi" {
     defaults = {
       output = {
         address    = "203.0.113.10", allocation_method = "Static", association = null
-        ip_version = "IPv4", location = "eastus", sku = "Standard", tier = "Regional"
+        ip_version = "IPv4", location = "eastus", sku = "Standard", tier = "Regional", type = "Standard"
+        virtual_wan_id = "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/rg-test/providers/Microsoft.Network/virtualWans/wan-test"
       }
     }
   }
@@ -66,6 +67,31 @@ run "one_customer_ip" {
   assert {
     condition     = length(azapi_resource.lock) == 0 && length(azapi_resource.role_assignments) == 0 && output.lock_resource_id == null && output.role_assignment_resource_ids == {}
     error_message = "Canonical optional interfaces must create no locks or assignments by default."
+  }
+}
+
+run "accept_standard_virtual_wan_type_without_hub_sku" {
+  command = apply
+  override_data {
+    target = data.azapi_resource.virtual_hub
+    values = {
+      output = {
+        location       = "eastus"
+        virtual_wan_id = "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/rg-test/providers/Microsoft.Network/virtualWans/wan-test"
+      }
+    }
+  }
+  override_data {
+    target = data.azapi_resource.virtual_wan
+    values = { output = { type = "Standard" } }
+  }
+  assert {
+    condition     = data.azapi_resource.virtual_wan.resource_id == data.azapi_resource.virtual_hub.output.virtual_wan_id
+    error_message = "The Virtual WAN read must resolve from the hub's own parent reference; real Azure hub reads do not reliably populate a hub-level sku."
+  }
+  assert {
+    condition     = azapi_resource.this.body.properties.virtualHub.id == var.virtual_hub_id
+    error_message = "Creation must succeed against a Standard Virtual WAN even when the hub response has no sku field at all."
   }
 }
 

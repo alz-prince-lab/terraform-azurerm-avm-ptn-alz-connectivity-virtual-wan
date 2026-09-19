@@ -2,8 +2,19 @@ data "azapi_resource" "virtual_hub" {
   resource_id = var.virtual_hub_id
   type        = var.resource_types.network_virtual_hubs
   response_export_values = {
-    location = "location"
-    sku      = "properties.sku"
+    location       = "location"
+    virtual_wan_id = "properties.virtualWan.id"
+  }
+}
+
+# The hub's own properties.sku is not reliably populated by the Virtual Hub RP; the
+# Standard/Basic designation is authoritative only on the parent Virtual WAN's properties.type,
+# which governs every hub attached to it.
+data "azapi_resource" "virtual_wan" {
+  resource_id = data.azapi_resource.virtual_hub.output.virtual_wan_id
+  type        = var.resource_types.network_virtual_wans
+  response_export_values = {
+    type = "properties.type"
   }
 }
 
@@ -106,10 +117,10 @@ resource "azapi_resource" "this" {
       error_message = "The firewall and virtual hub must be in the same subscription."
     }
     precondition {
-      condition = data.azapi_resource.virtual_hub.output.sku == "Standard" && (
+      condition = data.azapi_resource.virtual_wan.output.type == "Standard" && (
         replace(lower(data.azapi_resource.virtual_hub.output.location), " ", "") == replace(lower(var.location), " ", "")
       )
-      error_message = "A customer-IP firewall requires a Standard virtual hub in the same region."
+      error_message = "A customer-IP firewall requires a Standard Virtual WAN hub in the same region."
     }
     precondition {
       condition = alltrue([
