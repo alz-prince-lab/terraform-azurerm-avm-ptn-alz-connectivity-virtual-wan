@@ -407,7 +407,11 @@ variable "virtual_hubs" {
       zones                = optional(list(number))
       firewall_policy_id   = optional(string)
       vhub_public_ip_count = optional(string)
-      tags                 = optional(map(string))
+      ip_configurations = optional(map(object({
+        name                 = string
+        public_ip_address_id = string
+      })), {})
+      tags = optional(map(string))
     }), {})
 
     firewall_policy = optional(object({
@@ -895,7 +899,8 @@ The following top level attributes are supported:
   - `sku_tier` - (Optional) The SKU tier for the Azure Firewall. Possible values are `Basic`, `Standard`, `Premium`. Default `Standard`.
   - `zones` - (Optional) A list of availability zones for the Azure Firewall.
   - `firewall_policy_id` - (Optional) The resource ID of the Azure Firewall Policy to associate with the firewall.
-  - `vhub_public_ip_count` - (Optional) The number of public IP addresses to assign to the Virtual Hub firewall.
+  - `vhub_public_ip_count` - (Optional) Managed public IP count, expressed as a string. Null defaults to one managed IP with an empty `ip_configurations` map. With customer IPs, only null or zero is valid; a positive managed count cannot be combined with customer IPs.
+  - `ip_configurations` - (Optional) Map of caller-owned public IP configurations, default `{}`. Stable keys must be known at plan time. Each entry requires `name` and `public_ip_address_id`; resource IDs can be unknown until apply. Names and IDs must be unique ignoring case. A nonempty map selects customer-only mode. IPs must be Standard/Regional, static IPv4, in the hub's subscription and region, and unassociated or already attached to the same firewall. Add/remove/replace operations within customer mode are maintenance changes. Existing mode conversion is blocked.
   - `tags` - (Optional) A map of tags to apply to the Azure Firewall.
 
 ## Azure Firewall Policy

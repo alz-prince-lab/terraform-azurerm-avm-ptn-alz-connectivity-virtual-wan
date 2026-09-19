@@ -38,11 +38,15 @@ module "virtual_wan" {
   er_circuit_connections                = local.express_route_circuit_connections
   expressroute_gateways                 = local.virtual_network_gateways_express_route
   firewalls                             = local.firewalls
+  ignore_body_changes                   = var.ignore_body_changes.network_virtual_wans
   office365_local_breakout_category     = local.virtual_wan.office365_local_breakout_category
   p2s_gateway_vpn_server_configurations = local.p2s_gateway_vpn_server_configurations
   p2s_gateways                          = local.p2s_gateways
+  resource_types                        = var.resource_types.network_virtual_wans
+  retry                                 = var.retry
   routing_intents                       = local.routing_intents
   tags                                  = var.tags
+  timeouts                              = var.timeouts
   type                                  = local.virtual_wan.type
   virtual_hub_route_tables              = local.virtual_hub_route_tables
   virtual_hubs                          = local.virtual_hubs
