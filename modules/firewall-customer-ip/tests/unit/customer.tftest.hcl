@@ -10,6 +10,7 @@ mock_provider "azapi" {
         address        = "203.0.113.10", allocation_method = "Static", association = null
         ip_version     = "IPv4", location = "eastus", sku = "Standard", tier = "Regional", type = "Standard"
         virtual_wan_id = "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/rg-test/providers/Microsoft.Network/virtualWans/wan-test"
+        zones          = ["1", "2", "3"]
       }
     }
   }
@@ -116,6 +117,7 @@ run "add_second_ip_in_stable_key_order" {
       output = {
         address    = "203.0.113.11", allocation_method = "Static", association = null
         ip_version = "IPv4", location = "eastus", sku = "Standard", tier = "Regional"
+        zones      = ["1", "2", "3"]
       }
     }
   }
@@ -159,6 +161,7 @@ run "same_firewall_association_readback" {
         allocation_method = "Static"
         association       = "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/RG-TEST/providers/Microsoft.Network/azureFirewalls/FW-TEST/azureFirewallIpConfigurations/internet-primary"
         ip_version        = "IPv4", location = "East US", sku = "Standard", tier = "Regional"
+        zones             = ["1", "2", "3"]
       }
     }
   }
@@ -191,6 +194,7 @@ run "same_firewall_alternate_child_path" {
         allocation_method = "Static"
         association       = "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/rg-test/providers/Microsoft.Network/azureFirewalls/fw-test/ipConfigurations/internet-primary"
         ip_version        = "IPv4", location = "eastus", sku = "Standard", tier = "Regional"
+        zones             = ["1", "2", "3"]
       }
     }
   }
@@ -368,6 +372,25 @@ run "generated_role_name" {
       output.lock_resource_id == null
     )
     error_message = "Omitted assignment names must use the utility's UUID while explicit role IDs remain unchanged."
+  }
+}
+
+run "accept_non_zonal_firewall_with_non_zonal_public_ip" {
+  command = apply
+  variables { zones = [] }
+  override_data {
+    target = data.azapi_resource.public_ips["primary"]
+    values = {
+      output = {
+        address    = "203.0.113.10", allocation_method = "Static", association = null
+        ip_version = "IPv4", location = "eastus", sku = "Standard", tier = "Regional"
+        zones      = []
+      }
+    }
+  }
+  assert {
+    condition     = length(azapi_resource.this.body.zones) == 0
+    error_message = "A caller-selected non-zonal firewall must be accepted when the customer public IP also has no configured zones, mirroring a pre-zone-redundancy public IP."
   }
 }
 

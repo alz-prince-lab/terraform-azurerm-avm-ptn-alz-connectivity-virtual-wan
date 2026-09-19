@@ -25,6 +25,7 @@ mock_provider "azapi" {
         tier              = "Regional"
         type              = "Standard"
         virtual_wan_id    = "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/rg-test/providers/Microsoft.Network/virtualWans/wan-test"
+        zones             = ["1", "2", "3"]
       }
     }
   }
