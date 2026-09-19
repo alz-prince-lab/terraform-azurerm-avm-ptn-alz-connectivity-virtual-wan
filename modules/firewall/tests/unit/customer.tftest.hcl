@@ -34,7 +34,7 @@ mock_provider "azapi" {
       output = {
         properties = {
           hubIPAddresses       = { privateIPAddress = "10.0.0.4" }
-          threatIntelMode      = "Alert"
+          threatIntelMode      = null
           additionalProperties = {}
         }
       }

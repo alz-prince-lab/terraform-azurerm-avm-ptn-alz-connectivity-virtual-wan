@@ -75,7 +75,7 @@ foreach ($name in $Case | Where-Object { $_ -ne 'upgrade' }) {
         '@BEFORE_CUSTOMER_KEYS@' = $(if ($scenario.Customer) { '["edge-east"]' } else { '[]' })
         '@AFTER_CUSTOMER_KEYS@'  = $(if ($scenario.Customer) { '[]' } else { '["edge-east"]' })
         '@BEFORE_EAST_RESOURCE@' = $east
-        '@BEFORE_EAST_OUTPUT@'   = $(if ($scenario.Customer) { 'output = { properties = { additionalProperties = {}, hubIPAddresses = { privateIPAddress = "10.0.0.4" }, threatIntelMode = "Alert" } }' } else { '' })
+        '@BEFORE_EAST_OUTPUT@'   = $(if ($scenario.Customer) { 'output = { properties = { additionalProperties = {}, hubIPAddresses = { privateIPAddress = "10.0.0.4" }, threatIntelMode = null } }' } else { '' })
         '@REVISION@'            = $(if ($scenario.Unknown) { '1' } else { '0' })
         '@UNKNOWN_VALUES@'      = $(if ($scenario.Unknown) { 'true' } else { 'false' })
         '@INVENTORY_OVERRIDE@'  = $(if ($scenario.Inventory) { $inventoryOverride } else { '' })

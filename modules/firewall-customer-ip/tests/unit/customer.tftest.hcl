@@ -18,7 +18,7 @@ mock_provider "azapi" {
       id = "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/rg-test/providers/Microsoft.Network/azureFirewalls/fw-test"
       output = {
         properties = {
-          hubIPAddresses = { privateIPAddress = "10.0.0.4" }, threatIntelMode = "Alert", additionalProperties = {}
+          hubIPAddresses = { privateIPAddress = "10.0.0.4" }, threatIntelMode = null, additionalProperties = {}
         }
       }
     }

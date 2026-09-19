@@ -59,8 +59,14 @@ resource "azapi_resource" "this" {
       virtualHub = {
         id = var.virtual_hub_id
       }
-      firewallPolicy  = var.firewall_policy_id == null ? null : { id = var.firewall_policy_id }
-      threatIntelMode = "Alert"
+      firewallPolicy = var.firewall_policy_id == null ? null : { id = var.firewall_policy_id }
+      # threatIntelMode is intentionally not set here: Azure rejects it directly on an
+      # AZFW_Hub-SKU firewall (AzureFirewallDoesNotAcceptThreatIntelModeInSku). For secured
+      # virtual hub firewalls, threat intelligence mode is configured on the attached
+      # Firewall Policy instead (see the firewall_policy_threat_intelligence_mode input on
+      # the root module's firewall-policy submodule). properties.threatIntelMode stays in
+      # response_export_values below purely as a read-only reflection of whatever value
+      # Azure/the policy resolves it to.
       ipConfigurations = [
         for key in sort(keys(var.ip_configurations)) : {
           name = var.ip_configurations[key].name
