@@ -21,6 +21,7 @@ mock_provider "azapi" {
         address    = "203.0.113.10", allocation_method = "Static", association = null
         ip_version = "IPv4", location = "eastus", sku = "Standard", tier = "Regional", type = "Standard"
         virtual_wan_id = "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/rg-test/providers/Microsoft.Network/virtualWans/wan-test"
+        zones          = ["1", "2", "3"]
       }
     }
   }

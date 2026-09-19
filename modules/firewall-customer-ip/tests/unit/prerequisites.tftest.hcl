@@ -7,9 +7,10 @@ mock_provider "azapi" {
   mock_data "azapi_resource" {
     defaults = {
       output = {
-        address    = "203.0.113.10", allocation_method = "Static", association = null
-        ip_version = "IPv4", location = "eastus", sku = "Standard", tier = "Regional", type = "Standard"
+        address        = "203.0.113.10", allocation_method = "Static", association = null
+        ip_version     = "IPv4", location = "eastus", sku = "Standard", tier = "Regional", type = "Standard"
         virtual_wan_id = "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/rg-test/providers/Microsoft.Network/virtualWans/wan-test"
+        zones          = ["1", "2", "3"]
       }
     }
   }
@@ -106,6 +107,21 @@ run "reject_ipv6" {
       output = {
         address    = "2001:db8::1", allocation_method = "Static", association = null
         ip_version = "IPv6", location = "eastus", sku = "Standard", tier = "Regional"
+      }
+    }
+  }
+  expect_failures = [azapi_resource.this]
+}
+
+run "reject_zonal_firewall_with_non_zonal_public_ip" {
+  command = plan
+  override_data {
+    target = data.azapi_resource.public_ips["primary"]
+    values = {
+      output = {
+        address    = "203.0.113.10", allocation_method = "Static", association = null
+        ip_version = "IPv4", location = "eastus", sku = "Standard", tier = "Regional"
+        zones      = []
       }
     }
   }

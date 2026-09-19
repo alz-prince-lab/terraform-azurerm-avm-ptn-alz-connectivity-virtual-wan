@@ -41,6 +41,7 @@ data "azapi_resource" "public_ips" {
     location          = "location"
     sku               = "sku.name"
     tier              = "sku.tier"
+    zones             = "zones"
   }
 }
 
@@ -142,6 +143,15 @@ resource "azapi_resource" "this" {
         replace(lower(ip.output.location), " ", "") == replace(lower(var.location), " ", "")
       ])
       error_message = "Customer public IPs must be Standard/Regional, static IPv4 addresses in the firewall and hub region."
+    }
+    precondition {
+      # A zone-redundant (or zonal) firewall cannot reference a public IP with no configured zones; Azure
+      # rejects this at apply time with ZonalAzureFirewallCannotReferenceNoZonePublicIp. Surface it as a clear
+      # plan-time error instead, since a customer's existing public IP may predate zone redundancy.
+      condition = length(coalesce(var.zones, [])) == 0 ? true : alltrue([
+        for ip in data.azapi_resource.public_ips : length(try(coalesce(ip.output.zones, []), [])) > 0
+      ])
+      error_message = "This firewall is configured with availability zones (var.zones), but at least one customer public IP has no configured zones. Either set var.zones = [] to deploy a non-zonal firewall matching the existing public IP(s), or use zone-redundant public IPs."
     }
     precondition {
       condition = alltrue([
