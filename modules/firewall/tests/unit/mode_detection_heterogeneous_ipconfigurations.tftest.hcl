@@ -133,3 +133,49 @@ run "grow_third_customer_ip_on_existing_two_ip_firewall_with_heterogeneous_ipcon
     error_message = "An existing firewall with real (heterogeneous) customer ipConfigurations must be detected as customer mode, not misclassified as managed via a silently-swallowed coalesce() error."
   }
 }
+
+# Explicit control, in the SAME file as the heterogeneous case above: a real single-customer-IP firewall
+# body (verbatim from the second real firewall observed live, rg-alz352-hub-eastus -
+# fw-alz352-customer-ip-eastus/customer-owned-ip-config), whose single ipConfigurations element is
+# internally uniform (one element, one shape - nothing to unify against). This proves the defect is
+# specifically about UNIFICATION-IMPOSSIBLE heterogeneity across multiple elements, not "any
+# ipConfigurations list" or "any customer-mode firewall" - the same existing_customer_mode expression must
+# correctly read this shape as customer mode via a bare coalesce() that succeeds (no try()-swallowed error
+# involved at all), side-by-side in this file with the heterogeneous case that requires the fix.
+#
+# NOTE: the real single-IP observation was taken from a DIFFERENT resource group
+# (rg-alz352-hub-eastus) than the multi-IP case above (rg-alz352-case-m2-eastus) - that cross-RG
+# distinction is exactly what existing_firewalls' resource-group filter (the site-3 fix, see
+# existing_firewall_resource_group_scope.tftest.hcl) is independently tested against. To isolate THIS
+# control to existing_customer_mode's own coalesce/unification behavior (not the RG-filter), the id below
+# is placed in the SAME resource group ("rg-alz352-case-m2-eastus") that this file's `firewalls.hub`
+# variable requests, using the real single-IP element's own name/values otherwise verbatim.
+run "single_uniform_customer_ip_control_is_detected_without_needing_the_fix" {
+  command = plan
+  override_data {
+    target = data.azapi_resource_list.firewalls[0]
+    values = {
+      output = {
+        firewalls = [{
+          id   = "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/rg-alz352-case-m2-eastus/providers/Microsoft.Network/azureFirewalls/fw-alz352-customer-ip-eastus"
+          name = "fw-alz352-customer-ip-eastus"
+          properties = {
+            ipConfigurations = [
+              {
+                name = "customer-owned-ip-config"
+                properties = {
+                  privateIPAddress = "10.224.8.132"
+                  publicIPAddress  = { id = "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/rg-alz352-hub-eastus/providers/Microsoft.Network/publicIPAddresses/pip-customer-owned-test-352" }
+                }
+              }
+            ]
+          }
+        }]
+      }
+    }
+  }
+  assert {
+    condition     = local.existing_customer_mode["hub"] == true
+    error_message = "A real single-IP customer-mode firewall body (internally uniform, no unification conflict) must be detected as customer mode - this control proves the bug is specific to unification-impossible heterogeneity, not to customer mode itself."
+  }
+}
