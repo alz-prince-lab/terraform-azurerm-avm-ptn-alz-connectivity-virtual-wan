@@ -161,20 +161,54 @@ resource "azapi_resource" "this" {
       error_message = "This firewall is configured with availability zones (var.zones), but at least one customer public IP has no configured zones. Either set var.zones = [] to deploy a non-zonal firewall matching the existing public IP(s), or use zone-redundant public IPs."
     }
     precondition {
-      # Ownership must be checked across every association surface the public IP resource exposes, not
-      # just ipConfiguration: a NAT-Gateway-attached IP presents ipConfiguration = null while natGateway is
-      # non-null, and would otherwise be silently treated as unowned/available (issue #352 release
-      # qualification finding). natGateway attachment is unconditionally rejected - there is no supported
-      # "already attached to this same firewall via NAT Gateway" case, unlike ipConfiguration.
+      # DECISION RECORD (issue #352 release qualification, this session): this precondition is a
+      # plan-time convenience check, not this module's sole enforcement of ownership exclusivity.
+      #
+      # Real Azure independently and synchronously enforces public-IP attachment exclusivity at its own
+      # Microsoft.Network control-plane layer: attempting to attach an already-owned public IP to a NIC, a
+      # NAT Gateway, or a Load Balancer is rejected with a byte-identical PublicIPAddressInUse error on the
+      # PUT itself (HTTP 400, not an async provisioning failure), naming the true owner's full ARM resource
+      # ID, with the requesting resource never created (verified against real Azure across those three
+      # structurally unrelated consumer types; not independently re-verified for the Azure Firewall
+      # attach path this module itself uses, though the shared-validation-layer pattern makes the same
+      # behavior likely there too). Because Azure creates nothing on rejection, there is no ARM-level
+      # orphaned-resource risk either with or without this precondition.
+      #
+      # The ONLY genuine residual value of this precondition is avoiding a Terraform-graph-level partial
+      # apply: sibling resources ordered earlier in the same `apply` may already have been created before
+      # Azure's own rejection of azapi_resource.this itself, requiring a subsequent apply to reconcile
+      # Terraform state. That benefit is real but modest - it is not a security control and does not
+      # prevent any ARM-level hijack or orphan (both were verified not to occur either way).
+      #
+      # Ownership is checked across every association surface `Microsoft.Network/publicIPAddresses` exposes
+      # at this module's pinned API version (2024-10-01): `ipConfiguration` (populated identically
+      # regardless of which resource type owns the referenced IP configuration - a network interface, a
+      # Load Balancer frontend, an Application Gateway frontend, a VPN/ExpressRoute Gateway, an Azure
+      # Bastion instance, a Route Server, or a NIC-attached API Management/VMSS instance all use this one
+      # generic, response-only reference; confirmed via the ARM template reference for this exact API
+      # version) and `natGateway` (the one consumer with its own dedicated field, since it does not go
+      # through an IP configuration). These two fields are the complete set of top-level
+      # association-indicating properties on this resource type at this API version - this is not an
+      # enumeration of specific consumer types the module happened to test, it is the schema's full set.
+      #
+      # Explicit epistemic honesty, per this session's own review: ARM omits an absent association key
+      # entirely rather than returning it as an explicit null, so "ipConfiguration and natGateway both
+      # absent" is byte-identical whether the IP is genuinely free OR owned via some future/undocumented
+      # surface this schema verification did not anticipate. This precondition therefore must never be
+      # read, described, or documented as "verified free" - only as "no attachment detected via the
+      # association surfaces this module checks." See variables.tf's `ip_configurations` description for
+      # the customer-facing statement of this same boundary, and the release qualification report (§5A/§7.2)
+      # for the full analysis and the decision record between implementing vs. not implementing this check.
       condition = alltrue([
         for key, ip in data.azapi_resource.public_ips : try(ip.output.nat_gateway, null) == null && (
           ip.output.association == null ? true : lower(local.public_ip_association_parents[key]) == lower(local.firewall_id)
         )
       ])
-      error_message = "A supplied public IP is associated with another resource (including a NAT Gateway). Only unassociated IPs or IPs already associated with this same firewall are accepted."
+      error_message = "A supplied public IP is associated with another resource (including a NAT Gateway). Only unassociated IPs or IPs already associated with this same firewall are accepted. (This module's own check is a plan-time convenience; Azure's control plane independently and synchronously enforces this exclusivity regardless of this check.)"
     }
   }
 }
+
 
 module "avm_interfaces" {
   source  = "Azure/avm-utl-interfaces/azure"
