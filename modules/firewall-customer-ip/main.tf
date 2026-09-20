@@ -39,9 +39,14 @@ data "azapi_resource" "public_ips" {
     association       = "properties.ipConfiguration.id"
     ip_version        = "properties.publicIPAddressVersion"
     location          = "location"
-    sku               = "sku.name"
-    tier              = "sku.tier"
-    zones             = "zones"
+    # Microsoft.Network/publicIPAddresses@2024-10-01 (this module's default API version) exposes
+    # natGateway as a top-level sibling reference of ipConfiguration on PublicIPAddressPropertiesFormat.
+    # A NAT-Gateway-attached public IP presents ipConfiguration = null while natGateway is non-null, so
+    # this must be read and checked independently of association below.
+    nat_gateway = "properties.natGateway.id"
+    sku         = "sku.name"
+    tier        = "sku.tier"
+    zones       = "zones"
   }
 }
 
@@ -156,12 +161,17 @@ resource "azapi_resource" "this" {
       error_message = "This firewall is configured with availability zones (var.zones), but at least one customer public IP has no configured zones. Either set var.zones = [] to deploy a non-zonal firewall matching the existing public IP(s), or use zone-redundant public IPs."
     }
     precondition {
+      # Ownership must be checked across every association surface the public IP resource exposes, not
+      # just ipConfiguration: a NAT-Gateway-attached IP presents ipConfiguration = null while natGateway is
+      # non-null, and would otherwise be silently treated as unowned/available (issue #352 release
+      # qualification finding). natGateway attachment is unconditionally rejected - there is no supported
+      # "already attached to this same firewall via NAT Gateway" case, unlike ipConfiguration.
       condition = alltrue([
-        for key, ip in data.azapi_resource.public_ips : ip.output.association == null ? true : (
-          lower(local.public_ip_association_parents[key]) == lower(local.firewall_id)
+        for key, ip in data.azapi_resource.public_ips : try(ip.output.nat_gateway, null) == null && (
+          ip.output.association == null ? true : lower(local.public_ip_association_parents[key]) == lower(local.firewall_id)
         )
       ])
-      error_message = "A supplied public IP is associated with another resource. Only unassociated IPs or IPs already associated with this same firewall are accepted."
+      error_message = "A supplied public IP is associated with another resource (including a NAT Gateway). Only unassociated IPs or IPs already associated with this same firewall are accepted."
     }
   }
 }
