@@ -14,14 +14,19 @@ locals {
   public_ip_addresses = [
     for key in sort(keys(var.ip_configurations)) : data.azapi_resource.public_ips[key].output.address
   ]
-  # Real Azure GETs for a multi-ipConfiguration Secured Virtual Hub firewall do not guarantee the private
-  # IP address is reported on ipConfigurations[0] specifically - ARM does not guarantee array order matches
-  # submission order, and classic Azure Firewall semantics put the private address on a single
-  # ipConfiguration, not necessarily the first one. A hardcoded [0] index previously either silently
-  # returned the wrong (null) value, or hard-failed with an opaque `coalesce` error naming neither the
-  # firewall nor the actual cause, even when the address was genuinely present at a later index. Search
-  # every ipConfiguration instead of only the first, and treat an empty-string privateIPAddress the same as
-  # an absent one (compact() drops both null-coerced "" placeholders and genuine empty strings).
+  # Real Azure GETs for a multi-ipConfiguration Secured Virtual Hub firewall were observed (one firewall,
+  # two ipConfigurations, api-version 2024-10-01, one region) to report privateIPAddress on exactly one
+  # element and omit the key entirely (not null) on the other. In that single observation the address
+  # happened to be on index 0, so a hardcoded [0] index returned the correct value there - this defect is
+  # latent in that specific configuration, not actively triggered. Azure's return order was NOT measured to
+  # be guaranteed to match declaration order, and misordering was NOT measured to occur either - neither
+  # direction is asserted here. The only honest statement: if returned order ever differs from declared
+  # order, `ipConfigurations[0]` reads an element whose privateIPAddress key may be absent, which either
+  # silently returns the wrong (null) value or - as previously written - hard-fails with an opaque
+  # `coalesce` error naming neither the firewall nor the actual cause. To remove the dependency on order
+  # entirely, search every ipConfiguration for the one that actually carries the key, instead of assuming
+  # position [0], and treat an empty-string privateIPAddress the same as an absent one (compact() drops
+  # both null-coerced "" placeholders and genuine empty strings).
   ip_configuration_private_ip_addresses = compact([
     for configuration in try(azapi_resource.this.output.properties.ipConfigurations, []) :
     try(configuration.properties.privateIPAddress, "")

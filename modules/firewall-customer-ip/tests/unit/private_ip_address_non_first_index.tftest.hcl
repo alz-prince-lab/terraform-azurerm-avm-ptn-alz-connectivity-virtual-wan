@@ -35,10 +35,14 @@ variables {
 }
 
 # Regression coverage for a real-Azure finding: local.virtual_hub[0].private_ip_address previously hardcoded
-# properties.ipConfigurations[0], an unsafe index. ARM does not guarantee ipConfigurations array order
-# matches submission order, and classic Azure Firewall semantics put the private address on a single
-# ipConfiguration, not necessarily the first one. Before the fix, if index 0 lacked privateIPAddress but a
-# later index had it, the expression did NOT degrade to null - it hard-failed with an opaque
+# properties.ipConfigurations[0], an unsafe index. A live multi-ipConfiguration observation (one firewall,
+# two ipConfigurations, api-version 2024-10-01, one region) showed exactly one element carries
+# privateIPAddress and the other omits the key entirely (not null); in that observation the address
+# happened to be at index 0, so the defect was latent there, not actively triggered. Azure's return order
+# was NOT measured to be guaranteed to match declaration order, and misordering was NOT measured to occur
+# either - this test does not assert either direction, it only proves the fix no longer depends on order.
+# Before the fix, if index 0 lacked privateIPAddress but a later index had it, the expression did NOT
+# degrade to null - it hard-failed with an opaque
 # `Call to function "coalesce" failed: no non-null, non-empty-string arguments.` error naming neither the
 # firewall nor the cause, even though the private IP address was genuinely available at another index.
 #
