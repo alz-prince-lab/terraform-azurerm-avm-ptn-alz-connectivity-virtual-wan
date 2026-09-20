@@ -1,7 +1,8 @@
 # RELEASE QUALIFICATION EVIDENCE (issue #352 offline review) - NOT a new fix. These runs are all GREEN
-# against both the pre- and post-nat_gateway-fix implementation; they exist purely to substantiate, with
-# concrete citations, the completeness claim made in the release qualification report about the ownership
-# precondition in main.tf.
+# against the ownership precondition in main.tf, independent of the separate NAT-Gateway (a)/(b) decision
+# (see nat_gateway_ownership_gap.tftest.hcl and the release qualification report §5A.6): they exist purely
+# to substantiate, with concrete citations, the genericity claim about the `ipConfiguration`-based
+# association check.
 #
 # Per Microsoft.Network/publicIPAddresses@2024-10-01 (this module's default API version - see variables.tf
 # and the ARM template reference at learn.microsoft.com/azure/templates/microsoft.network/2024-10-01/
@@ -12,10 +13,11 @@
 #     frontend IP configuration, an Application Gateway frontend IP configuration, a VPN/ExpressRoute
 #     Gateway IP configuration, an Azure Bastion IP configuration, a Route Server IP configuration, or a
 #     NIC-attached API Management/VMSS instance. Azure does not expose a distinct field per consumer type;
-#     they all funnel through this single, generic reference.
+#     they all funnel through this single, generic reference. This module checks this field.
 #   - `natGateway` (a `{id: string}` reference) - the one consumer type that does NOT use an IP
-#     configuration and therefore needed its own dedicated check (added in this session's authorized fix;
-#     see nat_gateway_ownership_gap.tftest.hcl).
+#     configuration. This module deliberately does NOT check this field client-side (see
+#     nat_gateway_ownership_gap.tftest.hcl for the full (a)/(b) reasoning); Azure's own live, synchronous
+#     rejection on this module's actual attach path is the enforced backstop for that prerequisite instead.
 # There is no separate `natRule`/`natRules` or `loadBalancerBackendAddressPools` property directly on this
 # resource at this API version - confirmed via the same ARM template reference.
 #
@@ -48,7 +50,7 @@ mock_provider "azapi" {
   mock_data "azapi_resource" {
     defaults = {
       output = {
-        address        = "203.0.113.10", allocation_method = "Static", association = null, nat_gateway = null
+        address        = "203.0.113.10", allocation_method = "Static", association = null
         ip_version     = "IPv4", location = "eastus", sku = "Standard", tier = "Regional", type = "Standard"
         virtual_wan_id = "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/rg-test/providers/Microsoft.Network/virtualWans/wan-test"
         zones          = ["1", "2", "3"]
@@ -93,7 +95,6 @@ run "reject_load_balancer_frontend_associated_public_ip" {
         address     = "203.0.113.10", allocation_method = "Static"
         association = "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/rg-test/providers/Microsoft.Network/loadBalancers/lb-test/frontendIPConfigurations/frontend1"
         ip_version  = "IPv4", location = "eastus", sku = "Standard", tier = "Regional"
-        nat_gateway = null
         zones       = ["1", "2", "3"]
       }
     }
@@ -111,7 +112,6 @@ run "reject_application_gateway_frontend_associated_public_ip" {
         address     = "203.0.113.10", allocation_method = "Static"
         association = "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/rg-test/providers/Microsoft.Network/applicationGateways/agw-test/frontendIPConfigurations/frontend1"
         ip_version  = "IPv4", location = "eastus", sku = "Standard", tier = "Regional"
-        nat_gateway = null
         zones       = ["1", "2", "3"]
       }
     }
