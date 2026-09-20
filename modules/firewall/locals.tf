@@ -22,10 +22,22 @@ locals {
     }
   }
   existing_customer_mode = {
-    for key, firewall in local.existing_firewalls : key => length([
-      for configuration in try(coalesce(firewall.properties.ipConfigurations, []), []) : configuration
+    # Deliberately does NOT pre-filter the source through coalesce(): real Azure ipConfigurations
+    # responses are a heterogeneous tuple (one element carries privateIPAddress as a string, another
+    # omits that key entirely - real ARM key-omission, not null - alongside every element's nested
+    # publicIPAddress object). coalesce() requires all its arguments to convert to one common element
+    # type; this specific unification-impossible mix causes coalesce() to error, and an enclosing
+    # try(..., []) then silently swallows that error and substitutes an empty list, misclassifying a
+    # genuine customer-mode firewall as managed (confirmed against real Azure: fw-alz352-customer-ip-eastus,
+    # rg-alz352-case-m2-eastus). Wrapping the entire for-expression in try(..., []) instead - with no
+    # type-unifying function anywhere in the source - tolerates a null/absent ipConfigurations (the "for"
+    # itself errors on a non-iterable null, which try() catches) while never attempting to unify the
+    # tuple's own heterogeneous element types, since iterating a tuple with `for` does not require a
+    # common element type the way coalesce()/tolist() do.
+    for key, firewall in local.existing_firewalls : key => length(try([
+      for configuration in firewall.properties.ipConfigurations : configuration
       if try(configuration.properties.publicIPAddress.id, null) != null
-    ]) > 0
+    ], [])) > 0
   }
   existing_firewalls = {
     for key, firewall in local.requested_customer_firewalls : key => one([

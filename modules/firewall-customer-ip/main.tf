@@ -116,10 +116,18 @@ resource "azapi_resource" "this" {
 
   lifecycle {
     precondition {
-      condition = local.existing_firewall == null ? true : length([
-        for configuration in try(coalesce(local.existing_firewall.properties.ipConfigurations, []), []) : configuration
+      # See modules/firewall/locals.tf's existing_customer_mode for the full decision record: this
+      # condition is character-identical in shape to that one (both guard a managed<->customer transition
+      # based on whether a pre-existing firewall's real ipConfigurations response already carries a
+      # customer-owned public IP). Deliberately does NOT pre-filter the source through coalesce(): real
+      # Azure ipConfigurations responses are a heterogeneous tuple that can be unification-impossible for
+      # coalesce(), silently degrading to [] via the enclosing try() and misclassifying a genuine
+      # customer-mode firewall as managed (confirmed against real Azure). Wrapping the entire
+      # for-expression in try(..., []) instead avoids ever attempting that unification.
+      condition = local.existing_firewall == null ? true : length(try([
+        for configuration in local.existing_firewall.properties.ipConfigurations : configuration
         if try(configuration.properties.publicIPAddress.id, null) != null
-      ]) > 0
+      ], [])) > 0
       error_message = "An existing managed-IP firewall cannot be converted to customer IP mode by normal apply."
     }
     precondition {
