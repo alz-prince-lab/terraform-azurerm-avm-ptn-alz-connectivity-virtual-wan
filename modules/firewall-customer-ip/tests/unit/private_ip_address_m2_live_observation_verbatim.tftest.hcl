@@ -94,3 +94,10 @@ run "resolves_private_ip_matching_the_real_m2_live_observation_verbatim" {
     error_message = "Must resolve the private IP address exactly as observed live for the real M2 acceptance case (fw-alz352-customer-ip-eastus): ip-a carries privateIPAddress, ip-b omits the key entirely."
   }
 }
+
+# NOTE: the real single-IP control (rg-alz352-hub-eastus/customer-owned-ip-config) is deliberately kept in
+# its own separate file (private_ip_address_m2_live_observation_single_ip_control.tftest.hcl), not appended
+# here as a second `apply` run - this suite's tests/unit convention is one `apply` of azapi_resource.this
+# per file, because a later run's override_resource in the same file was observed to leak a stale value
+# from an earlier run's override rather than genuinely replacing it (see that file's own header comment
+# and the tftest state-leakage note in this session's qualification report).
