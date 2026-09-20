@@ -218,10 +218,16 @@ resource "azapi_resource" "this" {
       # Re-derives local.virtual_hub[0].private_ip_address's own null-degradation logic independently from
       # self.output (a postcondition cannot reference a local that itself depends on this same resource -
       # that is a disallowed self-referential dependency - so the search-every-ipConfiguration-and-treat-
-      # empty-string-as-absent logic is intentionally duplicated here, not shared). If it is still null after
-      # searching hubIPAddresses and every ipConfiguration, degrade to a clear, named apply-time error
-      # identifying this firewall, instead of letting local.virtual_hub's private_ip_address silently resolve
-      # to null and surface a confusing error from whatever consumes the private_ip_address output later.
+      # empty-string-as-absent logic is intentionally duplicated here, not shared). properties.hubIPAddresses
+      # is checked first for managed-mode/legacy compatibility, but is a mode-exclusive branch, not a normal
+      # fallback: real customer-mode Azure GETs were observed to omit it entirely, making the
+      # ipConfigurations scan the sole practical source in customer mode. If still null after searching
+      # hubIPAddresses and every ipConfiguration, degrade to a clear, named apply-time error identifying this
+      # firewall, instead of letting local.virtual_hub's private_ip_address silently resolve to null and
+      # surface a confusing error from whatever consumes the private_ip_address output later. Terraform's
+      # `coalesce` itself raises when every argument is null; the enclosing `try(..., null)` catches that,
+      # so this is not a bare/unguarded coalesce - it degrades to `false` below (via `!= null`), which is
+      # exactly the intended failure signal for this postcondition's own named error_message.
       condition = try(coalesce(
         try(self.output.properties.hubIPAddresses.privateIPAddress, null),
         try(compact([

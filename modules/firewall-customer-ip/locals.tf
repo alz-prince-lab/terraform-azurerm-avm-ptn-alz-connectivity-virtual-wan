@@ -32,27 +32,42 @@ locals {
   # happened to be on index 0, so a hardcoded [0] index returned the correct value there - this defect is
   # latent in that specific configuration, not actively triggered. Azure's return order was NOT measured to
   # be guaranteed to match declaration order, and misordering was NOT measured to occur either - neither
-  # direction is asserted here. The only honest statement: if returned order ever differs from declared
-  # order, `ipConfigurations[0]` reads an element whose privateIPAddress key may be absent, which either
-  # silently returns the wrong (null) value or - as previously written - hard-fails with an opaque
-  # `coalesce` error naming neither the firewall nor the actual cause. To remove the dependency on order
-  # entirely, search every ipConfiguration for the one that actually carries the key, instead of assuming
-  # position [0], and treat an empty-string privateIPAddress the same as an absent one (compact() drops
-  # both null-coerced "" placeholders and genuine empty strings).
+  # direction is asserted here. No defense against a different return order was found in the pre-fix code
+  # (a hardcoded ipConfigurations[0] index), and the resulting pre-fix failure mode was opaque (a raw
+  # `coalesce` error naming neither the firewall nor the actual cause) - only these two facts are claimed;
+  # "Azure reorders these" is never asserted, only that "no defense against reordering was found."
+  # To remove the dependency on order entirely, search every ipConfiguration for the one that actually
+  # carries the key, instead of assuming position [0], and treat an empty-string privateIPAddress the same
+  # as an absent one (compact() drops both null-coerced "" placeholders and genuine empty strings).
+  #
+  # Deterministic tie-break, stated explicitly rather than left as an implicit accident of evaluation order:
+  # if more than one ipConfiguration element were ever to carry a non-empty privateIPAddress simultaneously,
+  # this expression deliberately selects the first such element by array index in the order
+  # properties.ipConfigurations was returned by the API (compact()'s own output preserves the relative
+  # order of its non-empty inputs, and index [0] of that compacted list is taken below). This is a
+  # documented, deliberate choice of "first by returned-array order," not an accident of "whatever
+  # coalesce()/compact() happened to return" - real Azure firewalls are expected to report at most one
+  # ipConfiguration's privateIPAddress at a time in practice, so this tie-break is not expected to be
+  # exercised, but the rule is fixed and predictable if it ever is.
   ip_configuration_private_ip_addresses = compact([
     for configuration in try(azapi_resource.this.output.properties.ipConfigurations, []) :
     try(configuration.properties.privateIPAddress, "")
   ])
   virtual_hub = tolist([{
     virtual_hub_id = var.virtual_hub_id
-    # Real Azure GETs for a Secured Virtual Hub firewall commonly leave properties.hubIPAddresses.privateIPAddress
-    # null/absent even after a successful create (confirmed against a live customer-owned-IP firewall). The
-    # authoritative private address is always present per-ipConfiguration instead, so fall back to that -
-    # searching every ipConfiguration (see local.ip_configuration_private_ip_addresses above), not only the
+    # properties.hubIPAddresses.privateIPAddress is checked first, for managed-mode/legacy compatibility -
+    # this branch order must not regress. In customer mode specifically, real Azure GETs for a Secured
+    # Virtual Hub firewall were observed to omit properties.hubIPAddresses entirely, not merely leave it as
+    # a null fallback: it is a mode-exclusive branch (populated in managed mode, absent in customer mode),
+    # not a normal two-source fallback where either source is equally likely. In customer mode, the
+    # properties.ipConfigurations branch is therefore the sole authoritative source in practice, so it
+    # searches every ipConfiguration (see local.ip_configuration_private_ip_addresses above), not only the
     # first. If neither source resolves to a value, degrade to null here (via the outer try()) rather than
-    # letting `coalesce` hard-fail with an opaque, unnamed error; azapi_resource.this's own postcondition in
-    # main.tf independently re-derives this same outcome from self.output and raises a clear, named error
-    # identifying the firewall if it is genuinely null, so this local never surfaces the raw coalesce error.
+    # letting `coalesce` hard-fail with an opaque, unnamed error when both arguments are null - `coalesce`
+    # itself raises when every argument is null, which the enclosing try() catches, so this expression is
+    # not a bare/unguarded coalesce; azapi_resource.this's own postcondition in main.tf independently
+    # re-derives this same outcome from self.output and raises a clear, named error identifying the
+    # firewall if it is genuinely null, so this local never surfaces the raw coalesce error to a consumer.
     private_ip_address = try(coalesce(
       try(azapi_resource.this.output.properties.hubIPAddresses.privateIPAddress, null),
       try(local.ip_configuration_private_ip_addresses[0], null)
