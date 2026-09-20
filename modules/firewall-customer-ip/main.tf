@@ -206,6 +206,22 @@ resource "azapi_resource" "this" {
       ])
       error_message = "A supplied public IP is associated with another resource (including a NAT Gateway). Only unassociated IPs or IPs already associated with this same firewall are accepted. (This module's own check is a plan-time convenience; Azure's control plane independently and synchronously enforces this exclusivity regardless of this check.)"
     }
+    postcondition {
+      # Re-derives local.virtual_hub[0].private_ip_address's own null-degradation logic independently from
+      # self.output (a postcondition cannot reference a local that itself depends on this same resource -
+      # that is a disallowed self-referential dependency - so the search-every-ipConfiguration-and-treat-
+      # empty-string-as-absent logic is intentionally duplicated here, not shared). If it is still null after
+      # searching hubIPAddresses and every ipConfiguration, degrade to a clear, named apply-time error
+      # identifying this firewall, instead of letting local.virtual_hub's private_ip_address silently resolve
+      # to null and surface a confusing error from whatever consumes the private_ip_address output later.
+      condition = try(coalesce(
+        try(self.output.properties.hubIPAddresses.privateIPAddress, null),
+        try(compact([
+          for configuration in try(self.output.properties.ipConfigurations, []) : try(configuration.properties.privateIPAddress, "")
+        ])[0], null)
+      ), null) != null
+      error_message = "Firewall '${var.name}' (${self.id}) has no private IP address reported on properties.hubIPAddresses or on any properties.ipConfigurations[*].properties.privateIPAddress. This may indicate the firewall is not yet fully provisioned, or that Azure's response shape has changed unexpectedly."
+    }
   }
 }
 
