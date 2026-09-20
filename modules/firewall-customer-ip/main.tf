@@ -22,7 +22,7 @@ data "azapi_resource_list" "firewalls" {
   parent_id = var.parent_id
   type      = var.resource_types.network_azure_firewalls
   response_export_values = {
-    firewalls = "value[].{name:name,properties:properties}"
+    firewalls = "value[].{id:id,name:name,properties:properties}"
   }
 
   depends_on = [data.azapi_resource.virtual_hub]

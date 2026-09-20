@@ -71,7 +71,7 @@ run "resolves_the_firewall_in_its_own_resource_group_not_a_same_named_one_elsewh
     }
   }
   assert {
-    condition = lower(provider::azapi::parse_resource_id("Microsoft.Network/azureFirewalls", local.existing_firewall.id).resource_group_name) == "rg-test"
+    condition     = lower(provider::azapi::parse_resource_id("Microsoft.Network/azureFirewalls", local.existing_firewall.id).resource_group_name) == "rg-test"
     error_message = "existing_firewall must resolve to the same-named firewall inside this module's own resource group (var.parent_id), not a same-named firewall living in an unrelated resource group."
   }
 }

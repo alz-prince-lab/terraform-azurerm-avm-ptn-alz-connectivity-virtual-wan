@@ -54,6 +54,7 @@ run "grow_third_customer_ip_on_existing_two_ip_firewall_with_heterogeneous_ipcon
       output = {
         firewalls = [{
           name = "FW-TEST"
+          id   = "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/rg-test/providers/Microsoft.Network/azureFirewalls/FW-TEST"
           properties = {
             ipConfigurations = [
               {
@@ -95,6 +96,7 @@ run "explicit_null_ipconfigurations_still_read_as_managed_without_erroring" {
       output = {
         firewalls = [{
           name = "FW-TEST"
+          id   = "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/rg-test/providers/Microsoft.Network/azureFirewalls/FW-TEST"
           properties = {
             ipConfigurations = null
             hubIPAddresses   = { publicIPs = { count = 1 } }
@@ -118,6 +120,7 @@ run "absent_ipconfigurations_key_still_read_as_managed_without_erroring" {
       output = {
         firewalls = [{
           name = "FW-TEST"
+          id   = "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/rg-test/providers/Microsoft.Network/azureFirewalls/FW-TEST"
           properties = {
             hubIPAddresses = { publicIPs = { count = 1 } }
           }

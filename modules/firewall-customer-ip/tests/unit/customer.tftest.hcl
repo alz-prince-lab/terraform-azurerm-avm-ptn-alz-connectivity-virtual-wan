@@ -171,6 +171,7 @@ run "same_firewall_association_readback" {
       output = {
         firewalls = [{
           name = "FW-TEST"
+          id   = "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/rg-test/providers/Microsoft.Network/azureFirewalls/FW-TEST"
           properties = {
             ipConfigurations = [{ properties = { publicIPAddress = { id = "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/rg-ips/providers/Microsoft.Network/publicIPAddresses/pip-primary" } } }]
           }

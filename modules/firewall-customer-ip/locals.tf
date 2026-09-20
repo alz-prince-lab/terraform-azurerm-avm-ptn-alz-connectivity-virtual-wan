@@ -1,7 +1,19 @@
 locals {
+  # Real Azure (subscription 9f5f4d40) was measured to have two Azure Firewalls sharing the same name in
+  # two different resource groups: the one this module is actually creating/managing, and a wholly
+  # unrelated pre-existing firewall elsewhere. Filtering data.azapi_resource_list.firewalls by name alone
+  # cannot distinguish "the firewall this apply owns" from "some other firewall that merely shares a
+  # name" - at best it hard-errors once more than one same-named firewall exists anywhere in the
+  # subscription-wide response (one() rejects a multi-element list), and at worst it silently resolves to
+  # the wrong firewall when only one same-named match happens to exist, misreading an unrelated managed
+  # firewall elsewhere as this resource group's own pre-existing firewall and wrongly rejecting a
+  # legitimate customer-mode create. modules/firewall's equivalent lookup (existing_firewalls) already
+  # filters by resource group for the same reason; this leaf module's lookup is brought in line with it
+  # here, filtering by both name and the resource group parsed from var.parent_id.
   existing_firewall = one([
     for firewall in data.azapi_resource_list.firewalls.output.firewalls : firewall
     if lower(firewall.name) == lower(var.name)
+    && lower(provider::azapi::parse_resource_id("Microsoft.Network/azureFirewalls", firewall.id).resource_group_name) == lower(provider::azapi::parse_resource_id("Microsoft.Resources/resourceGroups", var.parent_id).resource_group_name)
   ])
   firewall_id = "${var.parent_id}/providers/Microsoft.Network/azureFirewalls/${var.name}"
   public_ip_association_parents = {

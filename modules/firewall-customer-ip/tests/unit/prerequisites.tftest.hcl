@@ -35,7 +35,7 @@ run "reject_existing_managed_firewall" {
   override_data {
     target = data.azapi_resource_list.firewalls
     values = {
-      output = { firewalls = [{ name = "FW-TEST", properties = { ipConfigurations = [], hubIPAddresses = { publicIPs = { count = 1 } } } }] }
+      output = { firewalls = [{ name = "FW-TEST", id = "/subscriptions/00000000-0000-0000-0000-000000000001/resourceGroups/rg-test/providers/Microsoft.Network/azureFirewalls/FW-TEST", properties = { ipConfigurations = [], hubIPAddresses = { publicIPs = { count = 1 } } } }] }
     }
   }
   expect_failures = [azapi_resource.this]
