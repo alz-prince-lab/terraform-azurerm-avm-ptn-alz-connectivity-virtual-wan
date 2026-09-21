@@ -231,7 +231,6 @@ resource "azapi_resource" "this" {
   }
 }
 
-
 module "avm_interfaces" {
   source  = "Azure/avm-utl-interfaces/azure"
   version = "0.6.0"
